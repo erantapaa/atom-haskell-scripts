@@ -1,0 +1,131 @@
+#!/bin/bash
+#
+# Usage:
+#
+#    build-resolver-bins RESOLVER
+#
+# Build a directory with ghc-mod, ghc-modi, stylish-haskell
+# and Atom launcher script for a specific stack resolver.
+#
+# Configuration:
+#
+# Before runnning this script configure the following
+# variables below:
+#
+#   ATOM_APP   - path to the Atom.app directory (for OSX)
+#                or the Atom binary (for Linux systems)
+
+ATOM_APP="$HOME/Applications/Atom.app/Contents/MacOS/Atom"
+
+function die () {
+  echo "FATAL -" "$@" >&2
+  exit 1
+}
+
+case "$#" in
+  1)  ;;
+  *)  die "Usage: build-resolver-bins RESOLVER"
+esac
+
+# if [ "$(uname)" == 'Darwin' ]; then
+#   OS='Mac'
+# elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
+#   OS='Linux'
+# else
+#   echo "Your platform ($(uname -a)) is not supported."
+#   exit 1
+# fi
+
+RESOLVER="$1"
+DESTDIR="$HOME/atom-bin/$RESOLVER"
+
+# Sanity checks.
+
+if ! stack path --resolver "$RESOLVER" > /dev/null 2>&1; then
+  die "Not a valid resolver: $RESOLVER"
+fi
+
+if [ "$ATOM_APP" = "" ]; then
+  echo "Please configure ATOM_APP in this script." >&2
+  exit
+fi
+
+# Make sire $ATOM_APP looks good.
+
+if not_program "$ATOM_APP"; then
+  die "ATOM_APP is not an executable: $ATOM_APP"
+fi
+RUN_ATOM=""
+
+localbin=$(stack path --resolver "$RESOLVER" --local-bin 2>/dev/null)
+compiler_bin=$(stack path --resolver "$RESOLVER" --compiler-bin 2>/dev/null)
+
+function not_program () {
+  if [ -f "$1" ] &&  [ -x "$1" ]; then
+    return 1 
+  fi
+  return 0 
+}
+
+# Perform sanity checks.
+
+if ! [ -d "$compiler_bin" ]; then
+  die "stack --compiler-bin is not a directory: $compiler_bin"
+fi
+
+if ! [ -x "$compiler_bin/ghc" ]; then
+  die "ghc not found at $compiler_bin/ghc"
+fi
+
+set -e
+
+# Create the DESTDIR
+
+if ! [ -d "$DESTDIR" ]; then
+  mkdir -p "$DESTDIR"
+fi
+
+echo ""
+if not_program "$DESTDIR/hlint"; then
+  echo "installing hlint..."
+  stack install --resolver "$RESOLVER" hlint
+  cp "$localbin/hlint"  "$DESTDIR"
+else
+  echo "hlint already found in $DESTDIR"
+fi
+
+if not_program "$DESTDIR/ghc-mod" || not_program "$DESTDIR/ghc-modi"; then
+  echo "Installing ghc-mod / ghc-modi..."
+  stack install --resolver "$RESOLVER" ghc-mod
+  cp "$localbin/ghc-mod"  "$DESTDIR"
+  cp "$localbin/ghc-modi" "$DESTDIR"
+else
+  echo "ghc-mod and ghc-modi already found in $DESTDIR"
+fi
+
+if not_program "$DESTDIR/stylish-haskell"; then
+  echo "Installing stylish-haskell..."
+  stack install --resolver "$RESOLVER" stylish-haskell
+  cp "$localbin/stylish-haskell" "$DESTDIR"
+else
+  echo "stylish-haskell already found in $DESTDIR"
+fi
+
+# Create the run-atom script.
+
+echo "Installing run-atom script..."
+
+cat > "$DESTDIR/run-atom" <<END
+#!/bin/sh
+
+PATH="$DESTDIR/bin:$compiler_bin:\$PATH"
+exec $RUN_ATOM "$ATOM_APP" "\$@"
+END
+chmod a+rx "$DESTDIR/run-atom"
+
+echo ""
+echo "Start Atom with:"
+echo ""
+echo "$DESTDIR/run-atom"
+echo ""
+
