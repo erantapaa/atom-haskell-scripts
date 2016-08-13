@@ -12,8 +12,7 @@
 # Before runnning this script configure the following
 # variables below:
 #
-#   ATOM_APP   - path to the Atom.app directory (for OSX)
-#                or the Atom binary (for Linux systems)
+#   ATOM_APP   - path to the Atom executable
 
 ATOM_APP="$HOME/Applications/Atom.app/Contents/MacOS/Atom"
 

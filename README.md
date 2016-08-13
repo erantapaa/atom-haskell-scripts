@@ -32,8 +32,8 @@ Install the following Atom packages:
 - `haskell-ghc-mod`
 - `language-haskell`
 
-You shouldn't need to configure any of these packages.
-The default configuration settings should work.
+You shouldn't need to configure any of these
+packages - the default settings should work.
 
 ### Utility Programs
 
@@ -62,10 +62,18 @@ In a new directory run:
     cd my-project
     stack setup
 
-Run Atom with:
+and then run Atom with:
 
-    ~/atom-bin/$RESOLVER/run-atom
+    ~/atom-bin/$RESOLVER/run-atom .
 
-and use the File -> Add Project Folder menu option
-to open the directory `my-project`.
+(you should be in the `my-project` directory when doing this.)
+
+Atom should start up displaying the `my-project` directory.
+
+Continue with:
+
+- Click on the directory `src` in the left panel.
+- Open the file `Main.hs`
+- Hover the cursor over `putStrLn` - this should bring up type
+information.
 
