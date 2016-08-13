@@ -54,6 +54,16 @@ _may_ work with another closely related resolver, but is
 advisable to use a suite of utilities tailored for the
 resolver you are using.
 
+### Starting Atom
+
+Start Atom with:
+
+    $ ~/atom-bin/$RESOLVER/run-atom
+
+On OS X an `open-atom` script is availble:
+
+    $ ~/atom-bin/$RESOLVER/open-atom
+
 ### Testing
 
 In a new directory run:
