@@ -12,13 +12,20 @@
 # Before runnning this script configure the following
 # variables below:
 #
-#   ATOM_APP   - path to the Atom executable
+#   ATOM_EXE   - path to the Atom executable
 
-ATOM_APP="$HOME/Applications/Atom.app/Contents/MacOS/Atom"
+ATOM_EXE="$HOME/Applications/Atom.app/Contents/MacOS/Atom"
 
 function die () {
   echo "FATAL -" "$@" >&2
   exit 1
+}
+
+function not_program () {
+  if [ -f "$1" ] &&  [ -x "$1" ]; then
+    return 1 
+  fi
+  return 0 
 }
 
 case "$#" in
@@ -26,14 +33,15 @@ case "$#" in
   *)  die "Usage: build-resolver-bins RESOLVER"
 esac
 
-# if [ "$(uname)" == 'Darwin' ]; then
-#   OS='Mac'
-# elif [ "$(expr substr $(uname -s) 1 5)" == 'Linux' ]; then
-#   OS='Linux'
-# else
-#   echo "Your platform ($(uname -a)) is not supported."
-#   exit 1
-# fi
+uname_s=$(uname -s)
+if [ "$(uname)" == 'Darwin' ]; then
+  OS='Mac'
+elif [ "${uname_s:0:5}" == 'Linux' ]; then
+  OS='Linux'
+else
+  echo "Your platform ($(uname -a)) is not supported."
+  exit 1
+fi
 
 RESOLVER="$1"
 DESTDIR="$HOME/atom-bin/$RESOLVER"
@@ -44,27 +52,19 @@ if ! stack path --resolver "$RESOLVER" > /dev/null 2>&1; then
   die "Not a valid resolver: $RESOLVER"
 fi
 
-if [ "$ATOM_APP" = "" ]; then
-  echo "Please configure ATOM_APP in this script." >&2
+if [ "$ATOM_EXE" = "" ]; then
+  echo "Please configure ATOM_EXE in this script." >&2
   exit
 fi
 
-# Make sire $ATOM_APP looks good.
+# Make sire $ATOM_EXE looks good.
 
-if not_program "$ATOM_APP"; then
-  die "ATOM_APP is not an executable: $ATOM_APP"
+if not_program "$ATOM_EXE"; then
+  die "ATOM_EXE is not an executable: $ATOM_EXE"
 fi
-RUN_ATOM=""
 
 localbin=$(stack path --resolver "$RESOLVER" --local-bin 2>/dev/null)
 compiler_bin=$(stack path --resolver "$RESOLVER" --compiler-bin 2>/dev/null)
-
-function not_program () {
-  if [ -f "$1" ] &&  [ -x "$1" ]; then
-    return 1 
-  fi
-  return 0 
-}
 
 # Perform sanity checks.
 
@@ -118,9 +118,29 @@ cat > "$DESTDIR/run-atom" <<END
 #!/bin/sh
 
 PATH="$DESTDIR/bin:$compiler_bin:\$PATH"
-exec $RUN_ATOM "$ATOM_APP" "\$@"
+exec "$ATOM_EXE" "\$@"
 END
 chmod a+rx "$DESTDIR/run-atom"
+
+# Create the open-atom script on OS X.
+if [ "$OS" == "Mac" ]; then
+
+  appdir="${ATOM_EXE%/Atom.app/*}"
+
+  if [ -d "$appdir/Atom.app" ]; then
+    ATOM_APP="$appdir/Atom.app"
+
+    echo "Installing open-atom script..."
+
+    cat > "$DESTDIR/open-atom" <<END
+#!/bin/sh
+
+PATH="$DESTDIR/bin:$compiler_bin:\$PATH"
+exec open "$ATOM_APP" "\$@"
+END
+    chmod a+rx "$DESTDIR/open-atom"
+  fi
+fi
 
 echo ""
 echo "Start Atom with:"
